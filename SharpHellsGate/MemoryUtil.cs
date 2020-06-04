@@ -28,7 +28,7 @@ namespace SharpHellsGate {
             return true;
         }
 
-        public T GetStructureFromBlob<T>(in long offset) where T : struct {
+        public T GetStructureFromBlob<T>(long offset) where T : struct {
             byte[] bytes = this.GetStructureBytesFromOffset<T>(in offset);
             if (Marshal.SizeOf<T>() != bytes.Length)
                 return default;
@@ -39,6 +39,13 @@ namespace SharpHellsGate {
 
             Marshal.FreeHGlobal(ptr);
             return s;
+        }
+
+        public byte[] GetFunctionOpCode(long offset) {
+            Span<byte> s = stackalloc byte[24];
+            this.ModuleStream.Seek(offset, SeekOrigin.Begin);
+            this.ModuleStream.Read(s);
+            return s.ToArray();
         }
 
         public uint ReadPtr32(long offset) {
@@ -53,6 +60,13 @@ namespace SharpHellsGate {
             this.ModuleStream.Seek(offset, SeekOrigin.Begin);
             this.ModuleStream.Read(s);
             return BitConverter.ToUInt64(s);
+        }
+
+        public ushort ReadUShort(long offset) {
+            Span<byte> s = stackalloc byte[2];
+            this.ModuleStream.Seek(offset, SeekOrigin.Begin);
+            this.ModuleStream.Read(s);
+            return BitConverter.ToUInt16(s);
         }
 
         // Thanks to:

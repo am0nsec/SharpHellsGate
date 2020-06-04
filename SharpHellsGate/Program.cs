@@ -3,6 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Reflection;
+using System.Reflection.Metadata.Ecma335;
 
 namespace SharpHellsGate {
 
@@ -10,7 +12,7 @@ namespace SharpHellsGate {
     public struct VxTableEntry {
         public ulong Hash;
         public byte Low;
-        public byte high;
+        public byte High;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 0)]
@@ -72,36 +74,36 @@ namespace SharpHellsGate {
             }
 
             // Get the section in which the EAT RVA points
-            int iRvaImageExportTable = ImageNTHeaders.OptionalHeader.DataDirectory[0].VirtualAddress;
-            ImageSection = GetSectionByRVA(ImageSectionHeaders, iRvaImageExportTable);
-            long iOffsetImageExportDirectory = ConvertRvaToOffset(iRvaImageExportTable, ImageSection);
+            int ivaImageExportTable = ImageNTHeaders.OptionalHeader.DataDirectory[0].VirtualAddress;
+            long OffsetImageExportDirectory = ConvertRvaToOffset(ivaImageExportTable, ImageSectionHeaders);
 
-            Win32.IMAGE_EXPORT_DIRECTORY ImageExportDirectory = MemUtil.GetStructureFromBlob<Win32.IMAGE_EXPORT_DIRECTORY>(iOffsetImageExportDirectory);
+            Win32.IMAGE_EXPORT_DIRECTORY ImageExportDirectory = MemUtil.GetStructureFromBlob<Win32.IMAGE_EXPORT_DIRECTORY>(OffsetImageExportDirectory);
             if (ImageExportDirectory.Equals(default(Win32.IMAGE_EXPORT_DIRECTORY))) {
                 LogError("Invalid EAT.");
                 return;
             }
 
             // Parse all functions
-            long lPtrToFunctionNames = ConvertRvaToOffset(ImageExportDirectory.AddressOfNames, ImageSection);
-            long lPtrToFunctions = ConvertRvaToOffset(ImageExportDirectory.AddressOfFunctions, ImageSection);
-            long pPtrToFunctionNameOrdinals = ConvertRvaToOffset(ImageExportDirectory.AddressOfNameOrdinals, ImageSection);
+            long PtrToFunctionNames = ConvertRvaToOffset(ImageExportDirectory.AddressOfNames, ImageSectionHeaders);
+            long PtrToFunctions = ConvertRvaToOffset(ImageExportDirectory.AddressOfFunctions, ImageSectionHeaders);
 
-            // Complete table
+            // Load the table
             VxTable Table = new VxTable();
             Table.NtAllocateVirtualMemory.Hash = 0xf5bd373480a6b89b;
+            GetVxTableEntry(ref MemUtil, ref Table.NtAllocateVirtualMemory, ref ImageSectionHeaders, PtrToFunctions, PtrToFunctionNames, ImageExportDirectory.NumberOfNames);
+            LogInfo($"NtAllocateVirtualMemory: 0x{HighLowToSystemCall(Table.NtAllocateVirtualMemory):x4}");
+
             Table.NtCreateThreadEx.Hash = 0x64dc7db288c5015f;
+            GetVxTableEntry(ref MemUtil, ref Table.NtCreateThreadEx, ref ImageSectionHeaders, PtrToFunctions, PtrToFunctionNames, ImageExportDirectory.NumberOfNames);
+            LogInfo($"NtCreateThreadEx:        0x{HighLowToSystemCall(Table.NtCreateThreadEx):x4}");
+
             Table.NtProtectVirtualMemory.Hash = 0x858bcb1046fb6a37;
+            GetVxTableEntry(ref MemUtil, ref Table.NtProtectVirtualMemory, ref ImageSectionHeaders, PtrToFunctions, PtrToFunctionNames, ImageExportDirectory.NumberOfNames);
+            LogInfo($"NtProtectVirtualMemory:  0x{HighLowToSystemCall(Table.NtProtectVirtualMemory):x4}");
+
             Table.NtWaitForSingleObject.Hash = 0xc6a2fa174e551bcb;
-
-
-            Console.WriteLine(String.Format("{0,-16}      {1}", "Hash", "Function Name"));
-            for (int cx = 0; cx < ImageExportDirectory.NumberOfNames; cx++) {
-                uint lPtrName = MemUtil.ReadPtr32(lPtrToFunctionNames + (sizeof(uint) * cx));
-                string name = MemUtil.ReadAscii(ConvertRvaToOffset(lPtrName, ImageSection));
-
-                Console.WriteLine(String.Format("0x{0,16}    {1}", Getdjb2Hash(name).ToString("x16"), name));
-            }
+            GetVxTableEntry(ref MemUtil, ref Table.NtWaitForSingleObject, ref ImageSectionHeaders, PtrToFunctions, PtrToFunctionNames, ImageExportDirectory.NumberOfNames);
+            LogInfo($"NtWaitForSingleObject:   0x{HighLowToSystemCall(Table.NtWaitForSingleObject):x4}");
 
 #if DEBUG
             Console.ReadKey();
@@ -148,6 +150,25 @@ namespace SharpHellsGate {
 #endif
         }
 
+        public static void GetVxTableEntry(ref MemoryUtil MemUtil, ref VxTableEntry Entry, ref List<Win32.IMAGE_SECTION_HEADER> Sections, long PtrFunctions, long PtrNames, int NumberOfNames) {
+            for (int cx = 0; cx < NumberOfNames; cx++) {
+                uint PtrFunctionName = MemUtil.ReadPtr32(PtrNames + (sizeof(uint) * cx));
+                string FunctionName = MemUtil.ReadAscii(ConvertRvaToOffset(PtrFunctionName, Sections));
+
+                if (Entry.Hash == Getdjb2Hash(FunctionName)) {
+                    uint PtrFunctionAdddress = MemUtil.ReadPtr32(PtrFunctions + (sizeof(uint) * (cx + 1)));
+                    long OffsetFunctionAddress = ConvertRvaToOffset(PtrFunctionAdddress, Sections);
+
+                    byte[] opcode = MemUtil.GetFunctionOpCode(OffsetFunctionAddress);
+                    if (opcode[3] == 0xb8 && opcode[18] == 0x0f && opcode[19] == 0x05) {
+                        Entry.High = opcode[5];
+                        Entry.Low = opcode[4];
+                        return;
+                    }
+                }
+            }
+        }
+
         public static long ConvertRvaToOffset(long rva, Win32.IMAGE_SECTION_HEADER SectionHeader)
             => rva - SectionHeader.VirtualAddress + SectionHeader.PointerToRawData;
 
@@ -166,6 +187,8 @@ namespace SharpHellsGate {
             + SizeOfOptionalHeader
             + 4
             + (Marshal.SizeOf<Win32.IMAGE_SECTION_HEADER>() * cx);
+
+        public static short HighLowToSystemCall(VxTableEntry Entry) => (short)((Entry.High << 4) | Entry.Low);
 
         public static ulong Getdjb2Hash(string FunctionName) {
             if (string.IsNullOrEmpty(FunctionName))
