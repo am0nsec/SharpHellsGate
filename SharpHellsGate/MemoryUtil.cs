@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace SharpHellsGate {
     public class MemoryUtil {
@@ -27,10 +28,10 @@ namespace SharpHellsGate {
             return true;
         }
 
-        public T GetStructureFromBlob<T>(in int offset) where T : struct {
+        public T GetStructureFromBlob<T>(in long offset) where T : struct {
             byte[] bytes = this.GetStructureBytesFromOffset<T>(in offset);
             if (Marshal.SizeOf<T>() != bytes.Length)
-                return default(T);
+                return default;
 
             IntPtr ptr = Marshal.AllocHGlobal(Marshal.SizeOf<T>());
             Marshal.Copy(bytes, 0, ptr, bytes.Length);
@@ -40,14 +41,42 @@ namespace SharpHellsGate {
             return s;
         }
 
-        private byte[] GetStructureBytesFromOffset<T>(in int offset) where T : struct {
+        public uint ReadPtr32(long offset) {
+            Span<byte> s = stackalloc byte[4];
+            this.ModuleStream.Seek(offset, SeekOrigin.Begin);
+            this.ModuleStream.Read(s);
+            return BitConverter.ToUInt32(s);
+        }
+
+        public ulong ReadPtr64(long offset) {
+            Span<byte> s = stackalloc byte[8];
+            this.ModuleStream.Seek(offset, SeekOrigin.Begin);
+            this.ModuleStream.Read(s);
+            return BitConverter.ToUInt64(s);
+        }
+
+        // Thanks to:
+        // https://github.com/secana/PeNet/blob/5bb1fba7eb79c19e7585083ff12a54c2df98a61c/src/PeNet/FileParser/StreamFile.cs#L19
+        public string ReadAscii(long offset) {
+            int length = 0;
+            this.ModuleStream.Seek(offset, SeekOrigin.Begin);
+            while (this.ModuleStream.ReadByte() != 0x00)
+                length++;
+
+            Span<byte> s = stackalloc byte[length];
+            this.ModuleStream.Seek(offset, SeekOrigin.Begin);
+            this.ModuleStream.Read(s);
+            return Encoding.ASCII.GetString(s);
+        }
+
+        private byte[] GetStructureBytesFromOffset<T>(in long offset) where T : struct {
             Span<byte> s = stackalloc byte[Marshal.SizeOf<T>()];
             this.ModuleStream.Seek(offset, SeekOrigin.Begin);
             this.ModuleStream.Read(s);
             return s.ToArray();
         }
 
-        private byte[] GetBytesFromOffset(in int offset, in int size) {
+        private byte[] GetBytesFromOffset(in long offset, in int size) {
             Span<byte> s = stackalloc byte[size];
             this.ModuleStream.Seek(offset, SeekOrigin.Begin);
             this.ModuleStream.Read(s);
