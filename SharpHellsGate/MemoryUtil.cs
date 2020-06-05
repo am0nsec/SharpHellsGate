@@ -69,8 +69,6 @@ namespace SharpHellsGate {
             return BitConverter.ToUInt16(s);
         }
 
-        // Thanks to:
-        // https://github.com/secana/PeNet/blob/5bb1fba7eb79c19e7585083ff12a54c2df98a61c/src/PeNet/FileParser/StreamFile.cs#L19
         public string ReadAscii(long offset) {
             int length = 0;
             this.ModuleStream.Seek(offset, SeekOrigin.Begin);

