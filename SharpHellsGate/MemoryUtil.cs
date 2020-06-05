@@ -4,14 +4,15 @@ using System.Runtime.InteropServices;
 using System.Text;
 
 namespace SharpHellsGate {
-    public class MemoryUtil {
+    public class MemoryUtil : IDisposable {
 
         private Stream ModuleStream { get; set; }
 
-        ~MemoryUtil() {
-            if (this.ModuleStream.Length > 0) {
-                this.ModuleStream.Close();
-            }
+        ~MemoryUtil() => Dispose();
+
+        public void Dispose() {
+            this.ModuleStream.Close();
+            GC.SuppressFinalize(this);
         }
 
         public MemoryUtil(byte[] stream) {

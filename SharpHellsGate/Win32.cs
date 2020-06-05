@@ -2,6 +2,7 @@
 
 namespace SharpHellsGate {
     public static class Win32 {
+
         [StructLayout(LayoutKind.Sequential, Pack = 0)]
         public struct IMAGE_DOS_HEADER {
             public short e_magic;       /*+0x000*/
@@ -114,6 +115,13 @@ namespace SharpHellsGate {
             public short NumberOfRelocations;   /*+0x020*/
             public short NumberOfLinenumbers;   /*+0x022*/
             public int Characteristics;         /*+0x024*/
+        }
+
+        [StructLayout(LayoutKind.Explicit, Size = 8)]
+        public struct LARGE_INTEGER {
+            [FieldOffset(0)] public long QuadPart;  /*+0x000*/
+            [FieldOffset(0)] public uint LowPart;   /*+0x000*/
+            [FieldOffset(4)] public int HighPart;   /*+0x004*/
         }
     }
 }
