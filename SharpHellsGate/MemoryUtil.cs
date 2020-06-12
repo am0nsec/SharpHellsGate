@@ -63,7 +63,7 @@ namespace SharpHellsGate {
             return BitConverter.ToUInt64(s);
         }
 
-        public ushort ReadUShort(long offset) {
+        public UInt16 ReadUShort(long offset) {
             Span<byte> s = stackalloc byte[2];
             this.ModuleStream.Seek(offset, SeekOrigin.Begin);
             this.ModuleStream.Read(s);

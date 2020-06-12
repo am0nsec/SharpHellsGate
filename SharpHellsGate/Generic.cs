@@ -2,6 +2,9 @@
 using System.Linq;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
+
+using Structures = SharpHellsGate.Win32.Structures;
 
 namespace SharpHellsGate {
     public class Generic {
@@ -32,7 +35,7 @@ namespace SharpHellsGate {
 #endif
         }
 
-        public static void GetVxTableEntry(ref MemoryUtil MemUtil, ref VxTableEntry Entry, ref List<Win32.IMAGE_SECTION_HEADER> Sections, long PtrFunctions, long PtrNames, int NumberOfNames) {
+        public static void GetVxTableEntry(ref MemoryUtil MemUtil, ref VxTableEntry Entry, ref List<Structures.IMAGE_SECTION_HEADER> Sections, long PtrFunctions, long PtrNames, uint NumberOfNames) {
             for (int cx = 0; cx < NumberOfNames; cx++) {
                 uint PtrFunctionName = MemUtil.ReadPtr32(PtrNames + (sizeof(uint) * cx));
                 string FunctionName = MemUtil.ReadAscii(ConvertRvaToOffset(PtrFunctionName, Sections));
@@ -51,24 +54,24 @@ namespace SharpHellsGate {
             }
         }
 
-        public static long ConvertRvaToOffset(long rva, Win32.IMAGE_SECTION_HEADER SectionHeader)
+        public static long ConvertRvaToOffset(long rva, Structures.IMAGE_SECTION_HEADER SectionHeader)
             => rva - SectionHeader.VirtualAddress + SectionHeader.PointerToRawData;
 
-        public static long ConvertRvaToOffset(long rva, List<Win32.IMAGE_SECTION_HEADER> SectionHeaders)
+        public static long ConvertRvaToOffset(long rva, List<Structures.IMAGE_SECTION_HEADER> SectionHeaders)
             => ConvertRvaToOffset(rva, GetSectionByRVA(SectionHeaders, rva));
 
-        public static Win32.IMAGE_SECTION_HEADER GetSectionByRVA(List<Win32.IMAGE_SECTION_HEADER> SectionHeaders, long rva)
+        public static Structures.IMAGE_SECTION_HEADER GetSectionByRVA(List<Structures.IMAGE_SECTION_HEADER> SectionHeaders, long rva)
             => SectionHeaders.Where(x => rva > x.VirtualAddress && rva <= x.VirtualAddress + x.SizeOfRawData).First();
 
-        public static Win32.IMAGE_SECTION_HEADER GetSectionByName(List<Win32.IMAGE_SECTION_HEADER> SectionHeaders, string SectionName)
+        public static Structures.IMAGE_SECTION_HEADER GetSectionByName(List<Structures.IMAGE_SECTION_HEADER> SectionHeaders, string SectionName)
             => SectionHeaders.Where(x => x.Name.Equals(SectionName)).First();
 
-        public static long GetSectionOffset(int e_lfanew, int SizeOfOptionalHeader, int cx)
+        public static long GetSectionOffset(UInt32 e_lfanew, int SizeOfOptionalHeader, int cx)
             => e_lfanew
-            + Marshal.SizeOf<Win32.IMAGE_FILE_HEADER>()
+            + Marshal.SizeOf<Structures.IMAGE_FILE_HEADER>()
             + SizeOfOptionalHeader
             + 4
-            + (Marshal.SizeOf<Win32.IMAGE_SECTION_HEADER>() * cx);
+            + (Marshal.SizeOf<Structures.IMAGE_SECTION_HEADER>() * cx);
 
         public static short HighLowToSystemCall(VxTableEntry Entry) => (short)((Entry.High << 4) | Entry.Low);
 
@@ -86,14 +89,17 @@ namespace SharpHellsGate {
         private static void LogMessage(string msg, string prefix, int indent, ConsoleColor color) {
             // Indent
             Console.Write(new String(' ', indent));
+            Trace.Write(new String(' ', indent));
 
             // Color and prefix
+            Trace.Write(prefix);
             Console.ForegroundColor = color;
             Console.Write(prefix);
             Console.ResetColor();
 
             // Message
             Console.WriteLine($" {msg}");
+            Trace.WriteLine($" {msg}");
         }
     }
 }

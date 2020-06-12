@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
+
+using SharpHellsGate.Win32;
 
 namespace SharpHellsGate {
 
@@ -23,13 +24,10 @@ namespace SharpHellsGate {
 
     public class Program {
 
-        public static short IMAGE_DOS_SIGNATURE { get; } = 0x5a00 | 0x4D;        // MZ
-        public static int IMAGE_NT_SIGNATURE { get; } = 0x00004500 | 0x00000050; // PE00
-
         static void Main(string[] args) {
             Generic.LogInfo("Copyright (C) 2020 Paul Laine (@am0nsec)");
             Generic.LogInfo("C# Implementation of the Hell's Gate VX Technique");
-            Console.WriteLine("   --------------------------------------------------\n");
+            Generic.LogInfo("   --------------------------------------------------\n", 0, "");
 
             // Only tested on x86
             if (IntPtr.Size != 8) {
@@ -45,37 +43,37 @@ namespace SharpHellsGate {
             MemoryUtil MemUtil = new MemoryUtil(File.ReadAllBytes(Environment.SystemDirectory + "\\ntdll.dll"));
 
             // Get DOS HEADER
-            Win32.IMAGE_DOS_HEADER ImageDOSHeader = MemUtil.GetStructureFromBlob<Win32.IMAGE_DOS_HEADER>(0);
-            if (ImageDOSHeader.Equals(default(Win32.IMAGE_DOS_HEADER)) || ImageDOSHeader.e_magic != IMAGE_DOS_SIGNATURE) {
+            Structures.IMAGE_DOS_HEADER ImageDOSHeader = MemUtil.GetStructureFromBlob<Structures.IMAGE_DOS_HEADER>(0);
+            if (ImageDOSHeader.Equals(default(Structures.IMAGE_DOS_HEADER)) || ImageDOSHeader.e_magic != Macros.IMAGE_DOS_SIGNATURE) {
                 Generic.LogError("Invalid DOS Header.");
                 return;
             }
 
             // Get NT Headers
-            Win32.IMAGE_NT_HEADERS64 ImageNTHeaders = MemUtil.GetStructureFromBlob<Win32.IMAGE_NT_HEADERS64>(ImageDOSHeader.e_lfanew);
-            if (ImageNTHeaders.Equals(default(Win32.IMAGE_NT_HEADERS64)) || ImageNTHeaders.Signature != IMAGE_NT_SIGNATURE) {
+            Structures.IMAGE_NT_HEADERS64 ImageNTHeaders = MemUtil.GetStructureFromBlob<Structures.IMAGE_NT_HEADERS64>(ImageDOSHeader.e_lfanew);
+            if (ImageNTHeaders.Equals(default(Structures.IMAGE_NT_HEADERS64)) || ImageNTHeaders.Signature != Macros.IMAGE_NT_SIGNATURE) {
                 Generic.LogError("Invalid NT Headers.");
                 return;
             }
 
             // Sections
-            Win32.IMAGE_SECTION_HEADER ImageSection = new Win32.IMAGE_SECTION_HEADER();
-            List<Win32.IMAGE_SECTION_HEADER> ImageSectionHeaders = new List<Win32.IMAGE_SECTION_HEADER>(ImageNTHeaders.FileHeader.NumberOfSections);
+            Structures.IMAGE_SECTION_HEADER ImageSection = new Structures.IMAGE_SECTION_HEADER();
+            List<Structures.IMAGE_SECTION_HEADER> ImageSectionHeaders = new List<Structures.IMAGE_SECTION_HEADER>(ImageNTHeaders.FileHeader.NumberOfSections);
             for (int cx = 0; cx < ImageNTHeaders.FileHeader.NumberOfSections; cx++) {
                 long iSectionOffset = Generic.GetSectionOffset(ImageDOSHeader.e_lfanew, ImageNTHeaders.FileHeader.SizeOfOptionalHeader, cx);
 
-                ImageSection = MemUtil.GetStructureFromBlob<Win32.IMAGE_SECTION_HEADER>(iSectionOffset);
-                if (!ImageSection.Equals(default(Win32.IMAGE_SECTION_HEADER))) {
+                ImageSection = MemUtil.GetStructureFromBlob<Structures.IMAGE_SECTION_HEADER>(iSectionOffset);
+                if (!ImageSection.Equals(default(Structures.IMAGE_SECTION_HEADER))) {
                     ImageSectionHeaders.Add(ImageSection);
                 }
             }
 
             // Get the section in which the EAT RVA points
-            int ivaImageExportTable = ImageNTHeaders.OptionalHeader.DataDirectory[0].VirtualAddress;
+            UInt32 ivaImageExportTable = ImageNTHeaders.OptionalHeader.DataDirectory[0].VirtualAddress;
             long OffsetImageExportDirectory = Generic.ConvertRvaToOffset(ivaImageExportTable, ImageSectionHeaders);
 
-            Win32.IMAGE_EXPORT_DIRECTORY ImageExportDirectory = MemUtil.GetStructureFromBlob<Win32.IMAGE_EXPORT_DIRECTORY>(OffsetImageExportDirectory);
-            if (ImageExportDirectory.Equals(default(Win32.IMAGE_EXPORT_DIRECTORY))) {
+            Structures.IMAGE_EXPORT_DIRECTORY ImageExportDirectory = MemUtil.GetStructureFromBlob<Structures.IMAGE_EXPORT_DIRECTORY>(OffsetImageExportDirectory);
+            if (ImageExportDirectory.Equals(default(Structures.IMAGE_EXPORT_DIRECTORY))) {
                 Generic.LogError("Invalid EAT.");
                 return;
             }
