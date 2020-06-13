@@ -34,14 +34,11 @@ namespace SharpHellsGate {
             Util.LogInfo($"NtProtectVirtualMemory:  0x{APITable[Util.NtProtectVirtualMemoryHash].Syscall:x4}");
             Util.LogInfo($"NtWaitForSingleObject:   0x{APITable[Util.NtWaitForSingleObjectHash].Syscall:x4}");
             Util.LogInfo($"NtCreateThreadEx:        0x{APITable[Util.NtCreateThreadExHash].Syscall:x4}\n");
-            return;
 
-            /*
-            // Execute payload
-            MemUtil.Dispose();
-            HellsGate gate = new HellsGate(Table);
+            HellsGate gate = new HellsGate(APITable);
+            gate.GenerateRWXMemorySegment();
             gate.Payload();
-            */
+            return;
         }
     }
 }

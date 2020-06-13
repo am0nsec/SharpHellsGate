@@ -120,7 +120,7 @@ namespace SharpHellsGate.Win32 {
 
         [StructLayout(LayoutKind.Explicit, Size = 1)]
         public struct LARGE_INTEGER {
-            [FieldOffset(0)] public UInt64 QuadPart;  /*+0x000*/
+            [FieldOffset(0)] public Int64 QuadPart;  /*+0x000*/
             [FieldOffset(0)] public UInt32 LowPart;   /*+0x000*/
             [FieldOffset(4)] public UInt32 HighPart;  /*+0x004*/
         }
