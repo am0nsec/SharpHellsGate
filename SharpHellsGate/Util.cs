@@ -2,8 +2,15 @@
 using System.Diagnostics;
 
 namespace SharpHellsGate {
+
+    /// <summary>
+    /// Util class. Used mainly for debug output.
+    /// </summary>
     public class Util {
 
+        /// <summary>
+        /// Structure used to store the name, address, system call and hash of a native Windows function.
+        /// </summary>
         public struct APITableEntry {
             public string Name;
             public Int64 Address;
@@ -11,9 +18,24 @@ namespace SharpHellsGate {
             public UInt64 Hash;
         }
 
+        /// <summary>
+        /// DJB2 Hash of the NtAllocateVirtualMemory function name.
+        /// </summary>
         public static UInt64 NtAllocateVirtualMemoryHash { get; } = 0xf5bd373480a6b89b;
+
+        /// <summary>
+        /// DJB2 Hash of the NtProtectVirtualMemory function name.
+        /// </summary>
         public static UInt64 NtProtectVirtualMemoryHash { get; } = 0x858bcb1046fb6a37;
+
+        /// <summary>
+        /// DJB2 Hash of the NtCreateThreadEx function name.
+        /// </summary>
         public static UInt64 NtCreateThreadExHash { get; } = 0x64dc7db288c5015f;
+
+        /// <summary>
+        /// DJB2 Hash of the NtWaitForSingleObject function name.
+        /// </summary>
         public static UInt64 NtWaitForSingleObjectHash { get; } = 0xc6a2fa174e551bcb;
 
 

@@ -6,19 +6,53 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace SharpHellsGate {
+
+    /// <summary>
+    /// Main implementation of the Hell's Gate technique.
+    /// Responsible for generating a RWX memory region, inject and execute system call stubs.
+    /// </summary>
     public class HellsGate {
+
+        /// <summary>
+        /// Used to check if the RWX memory region was generated.
+        /// </summary>
         private bool IsGateReady { get; set; } = false;
+
+        /// <summary>
+        /// Used as for mutual exclusion while injecting and execution of the system call stub in memory.
+        /// </summary>
         private object Mutant { get; set; } = new object();
+
+        /// <summary>
+        /// 
+        /// </summary>
         private Dictionary<UInt64, Util.APITableEntry> APITable { get; set; } = new Dictionary<ulong, Util.APITableEntry>() { };
+
+        /// <summary>
+        /// Address of the managed method that was JIT'ed.
+        /// </summary>
         private IntPtr MangedMethodAddress { get; set; } = IntPtr.Zero;
+
+        /// <summary>
+        /// Address of the RWX memory region after JIT compiling the managed method.
+        /// </summary>
         private IntPtr UnmanagedMethodAddress { get; set; } = IntPtr.Zero;
 
-
+        /// <summary>
+        /// This function will be JIT at runtime to create RWX memory region.
+        /// </summary>
+        //// <returns>Gate returns either STATUS_SUCCESS or an error status code.</returns>
         [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
         private static UInt32 Gate() {
             return new UInt32();
         }
 
+        /// <summary>
+        /// Inject in memory a basic system call stub and return a delegate for execution via un-managed code.
+        /// </summary>
+        /// <typeparam name="T">The desired delegate Type.</typeparam>
+        /// <param name="syscall">The system call to execute.</param>
+        /// <returns>A delegate of to execute the system call.</returns>
         private T NtInvocation<T>(Int16 syscall) where T: Delegate {
             if (!this.IsGateReady || this.UnmanagedMethodAddress == IntPtr.Zero) {
                 Util.LogError("Unable to inject system call stub");
@@ -39,7 +73,17 @@ namespace SharpHellsGate {
             Marshal.Copy(stub.ToArray(), 0, this.UnmanagedMethodAddress, stub.Length);
             return Marshal.GetDelegateForFunctionPointer<T>(this.UnmanagedMethodAddress);
         }
-        
+
+        /// <summary>
+        /// Managed wrapper around the NtAllocateVirtualMemory native Windows function
+        /// </summary>
+        /// <param name="ProcessHandle">A handle for the process for which the mapping should be done.</param>
+        /// <param name="BaseAddress">A pointer to a variable that will receive the base address of the allocated region of pages.</param>
+        /// <param name="ZeroBits">The number of high-order address bits that must be zero in the base address of the section view.</param>
+        /// <param name="RegionSize">A pointer to a variable that will receive the actual size, in bytes, of the allocated region of pages.</param>
+        /// <param name="AllocationType">A bitmask containing flags that specify the type of allocation to be performed for the specified region of pages.</param>
+        /// <param name="Protect">A bitmask containing page protection flags that specify the protection desired for the committed region of pages.</param>
+        /// <returns>NtAllocateVirtualMemory returns either STATUS_SUCCESS or an error status code.</returns>
         private UInt32 NtAllocateVirtualMemory(IntPtr ProcessHandle, ref IntPtr BaseAddress, IntPtr ZeroBits, ref IntPtr RegionSize, UInt32 AllocationType, UInt32 Protect) {
             lock (this.Mutant) {
                 Int16 syscall = this.APITable[Util.NtAllocateVirtualMemoryHash].Syscall;
@@ -51,6 +95,15 @@ namespace SharpHellsGate {
             }
         }
 
+        /// <summary>
+        /// Managed wrapper around the NtProtectVirtualMemory native Windows function.
+        /// </summary>
+        /// <param name="ProcessHandle">Handle to Process Object opened with PROCESS_VM_OPERATION access.</param>
+        /// <param name="BaseAddress">Pointer to base address to protect. Protection will change on all page containing specified address. On output, BaseAddress will point to page start address.</param>
+        /// <param name="NumberOfBytesToProtect">Pointer to size of region to protect. On output will be round to page size (4KB).</param>
+        /// <param name="NewAccessProtection">One or some of PAGE_... attributes.</param>
+        /// <param name="OldAccessProtection">Receive previous protection.</param>
+        /// <returns>NtProtectVirtualMemory returns either STATUS_SUCCESS or an error status code.</returns>
         private UInt32 NtProtectVirtualMemory(IntPtr ProcessHandle, ref IntPtr BaseAddress, ref IntPtr NumberOfBytesToProtect, UInt32 NewAccessProtection, ref UInt32 OldAccessProtection) {
             lock (this.Mutant) {
                 Int16 syscall = this.APITable[Util.NtProtectVirtualMemoryHash].Syscall;
@@ -62,6 +115,21 @@ namespace SharpHellsGate {
             }
         }
 
+        /// <summary>
+        /// Managed wrapper around the NtCreateThreadEx native Windows function.
+        /// </summary>
+        /// <param name="hThread">Caller supplied storage for the resulting handle.</param>
+        /// <param name="DesiredAccess">Specifies the allowed or desired access to the thread.</param>
+        /// <param name="ObjectAttributes">Initialized attributes for the object.</param>
+        /// <param name="ProcessHandle">Handle to the threads parent process.</param>
+        /// <param name="lpStartAddress">Address of the function to execute.</param>
+        /// <param name="lpParameter">Parameters to pass to the function.</param>
+        /// <param name="CreateSuspended">Whether the thread will be in suspended mode and has to be resumed later.</param>
+        /// <param name="StackZeroBits"></param>
+        /// <param name="SizeOfStackCommit">Initial stack memory to commit.</param>
+        /// <param name="SizeOfStackReserve">Initial stack memory to reserve.</param>
+        /// <param name="lpBytesBuffer"></param>
+        /// <returns>NtCreateThreadEx returns either STATUS_SUCCESS or an error status code.</returns>
         private UInt32 NtCreateThreadEx(ref IntPtr hThread, uint DesiredAccess, IntPtr ObjectAttributes, IntPtr ProcessHandle, IntPtr lpStartAddress, IntPtr lpParameter, bool CreateSuspended, uint StackZeroBits, uint SizeOfStackCommit, uint SizeOfStackReserve, IntPtr lpBytesBuffer) {
             lock (this.Mutant) {
                 Int16 syscall = this.APITable[Util.NtCreateThreadExHash].Syscall;
@@ -73,6 +141,13 @@ namespace SharpHellsGate {
             }
         }
 
+        /// <summary>
+        /// Managed wrapper around the NtWaitForSingleObject native Windows function.
+        /// </summary>
+        /// <param name="ObjectHandle">Open handle to a alertable executive object.</param>
+        /// <param name="Alertable">If set, calling thread is signaled, so all queued APC routines are executed.</param>
+        /// <param name="TimeOuts">Time-out interval, in microseconds. NULL means infinite.</param>
+        /// <returns>NtWaitForSingleObject returns either STATUS_SUCCESS or an error status code.</returns>
         private UInt32 NtWaitForSingleObject(IntPtr ObjectHandle, bool Alertable, ref Structures.LARGE_INTEGER TimeOuts) {
             lock (this.Mutant) {
                 Int16 syscall = this.APITable[Util.NtWaitForSingleObjectHash].Syscall;
@@ -95,7 +170,7 @@ namespace SharpHellsGate {
         /// <summary>
         /// JIT a static method to generate RWX memory segment.
         /// </summary>
-        /// <returns>Whether the memory segment was successfuly generated.</returns>
+        /// <returns>Whether the memory segment was successfully generated.</returns>
         public bool GenerateRWXMemorySegment() {
             // Find and JIT the method
             MethodInfo method = typeof(HellsGate).GetMethod(nameof(Gate), BindingFlags.Static | BindingFlags.NonPublic);

@@ -1,6 +1,10 @@
 ﻿using System;
 
 namespace SharpHellsGate.Win32 {
+
+    /// <summary>
+    /// Windows Macros used for error and success codes and bitmasks.
+    /// </summary>
     public static class Macros {
 
         // NTSTATUS 
@@ -70,6 +74,5 @@ namespace SharpHellsGate.Win32 {
         public static UInt32 MEM_DECOMMIT { get; } = 0x00004000;
         public static UInt32 MEM_RELEASE { get; } = 0x00008000;
         public static UInt32 MEM_FREE { get; } = 0x00010000;
-
     }
 }

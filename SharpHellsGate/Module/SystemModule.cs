@@ -6,19 +6,61 @@ using System.Runtime.InteropServices;
 using System.Linq;
 
 namespace SharpHellsGate.Module {
+
+    /// <summary>
+    /// Wrapper around the NTDLL module.
+    /// Used to extract structures and find system calls.
+    /// </summary>
     public class SystemModule : MemoryUtil {
 
+        /// <summary>
+        /// IMAGE_DOS_HEADER structure of the NTDLL module.
+        /// </summary>
         public Structures.IMAGE_DOS_HEADER ModuleDOSHeader { get; private set; }
+
+        /// <summary>
+        /// IMAGE_NT_HEADERS64 structure of the NTDLL module.
+        /// </summary>
         public Structures.IMAGE_NT_HEADERS64 ModuleNTHeaders { get; private set; }
+
+        /// <summary>
+        /// IMAGE_SECTION_HEADER structure from the NTDLL module.
+        /// </summary>
         public List<Structures.IMAGE_SECTION_HEADER> ModuleSectionHeaders { get; private set; }
+
+        /// <summary>
+        /// IMAGE_EXPORT_DIRECTORY structure from the NTDLL module.
+        /// </summary>
         public Structures.IMAGE_EXPORT_DIRECTORY ModuleExportDirectory { get; private set; }
 
+        /// <summary>
+        /// Location in the memory stream of the IMAGE_EXPORT_DIRECTORY structure.
+        /// </summary>
         public Int64 ModuleExportDirectoryOffset { get; private set; }
+
+        /// <summary>
+        /// Location in the memory stream of the exported functions' name.
+        /// </summary>
         public Int64 ModuleExportDirectoryAddressNamesOffset { get; private set; }
+
+        /// <summary>
+        /// Location in the memory stream of the exported functions' address.
+        /// </summary>
         public Int64 ModuleExportDirectoryAddressFunctionsOffset { get; private set; }
+
+        /// <summary>
+        /// Location in the memory stream of the exported functions' ordinal.
+        /// </summary>
         public Int64 ModuleExportDirectoryAddressNameOrdinalesOffset { get; private set; }
 
+        /// <summary>
+        /// Name of the module. Will be NTDLL.
+        /// </summary>
         public string ModuleName { get; private set; }
+
+        /// <summary>
+        /// Path of the module. Will be %WINDIR%\System32\ntdll.dll
+        /// </summary>
         public string ModulePath { get; private set; }
 
         /// <summary>
@@ -39,7 +81,7 @@ namespace SharpHellsGate.Module {
         /// <returns>Whether the loading process was a success.</returns>
         public bool LoadModule() {
             if (string.IsNullOrEmpty(this.ModuleName)) {
-                Util.LogError("Module name not proivided");
+                Util.LogError("Module name not provided");
                 return false;
             }
 
@@ -178,7 +220,7 @@ namespace SharpHellsGate.Module {
         }
 
         /// <summary>
-        /// Get the Export Address Table (aka EAT) from the the module.
+        /// Get the Export Address Table (aka EAT) from the module.
         /// </summary>
         /// <param name="ReloadCache">Whether the data has to re-processed if not already cached.</param>
         /// <returns>the _IMAGE_EXPORT_DIRECTORY structure</returns>

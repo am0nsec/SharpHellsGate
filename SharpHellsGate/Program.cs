@@ -4,8 +4,15 @@ using SharpHellsGate.Module;
 
 namespace SharpHellsGate {
 
+    /// <summary>
+    /// Main class.
+    /// </summary>
     public class Program {
 
+        /// <summary>
+        /// Entry point of the program.
+        /// </summary>
+        /// <param name="args">Command line arguments.</param>
         static void Main(string[] args) {
             Util.LogInfo("Copyright (C) 2020 Paul Laine (@am0nsec)");
             Util.LogInfo("C# Implementation of the Hell's Gate VX Technique");
