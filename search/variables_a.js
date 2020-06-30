@@ -1,0 +1,11 @@
+var searchData=
+[
+  ['name_351',['Name',['../d5/de9/structSharpHellsGate_1_1Util_1_1APITableEntry.html#ac5a6abccf56ee0481320d3908e1c07f9',1,'SharpHellsGate.Util.APITableEntry.Name()'],['../d7/d75/structSharpHellsGate_1_1Win32_1_1Structures_1_1IMAGE__EXPORT__DIRECTORY.html#ade04c7446032d66d7a29ddaf1255a0b4',1,'SharpHellsGate.Win32.Structures.IMAGE_EXPORT_DIRECTORY.Name()'],['../d2/d2c/structSharpHellsGate_1_1Win32_1_1Structures_1_1IMAGE__SECTION__HEADER.html#af6f1f85a35afda659b94b58019dd4ab9',1,'SharpHellsGate.Win32.Structures.IMAGE_SECTION_HEADER.Name()']]],
+  ['numberoffunctions_352',['NumberOfFunctions',['../d7/d75/structSharpHellsGate_1_1Win32_1_1Structures_1_1IMAGE__EXPORT__DIRECTORY.html#af0887290bd640dcea8ae8bb8fe0d7ded',1,'SharpHellsGate::Win32::Structures::IMAGE_EXPORT_DIRECTORY']]],
+  ['numberoflinenumbers_353',['NumberOfLinenumbers',['../d2/d2c/structSharpHellsGate_1_1Win32_1_1Structures_1_1IMAGE__SECTION__HEADER.html#a31a9fad5a45434c6e6af83ca9e32cec6',1,'SharpHellsGate::Win32::Structures::IMAGE_SECTION_HEADER']]],
+  ['numberofnames_354',['NumberOfNames',['../d7/d75/structSharpHellsGate_1_1Win32_1_1Structures_1_1IMAGE__EXPORT__DIRECTORY.html#a6e928409e04878d4c1ac9453d72fe021',1,'SharpHellsGate::Win32::Structures::IMAGE_EXPORT_DIRECTORY']]],
+  ['numberofrelocations_355',['NumberOfRelocations',['../d2/d2c/structSharpHellsGate_1_1Win32_1_1Structures_1_1IMAGE__SECTION__HEADER.html#a696ae78622b1d69d247ed4f72ef60b59',1,'SharpHellsGate::Win32::Structures::IMAGE_SECTION_HEADER']]],
+  ['numberofrvaandsizes_356',['NumberOfRvaAndSizes',['../de/d50/structSharpHellsGate_1_1Win32_1_1Structures_1_1IMAGE__OPTIONAL__HEADER64.html#a5944f4e0840a7237f5d0685a5b591f2f',1,'SharpHellsGate::Win32::Structures::IMAGE_OPTIONAL_HEADER64']]],
+  ['numberofsections_357',['NumberOfSections',['../de/dcb/structSharpHellsGate_1_1Win32_1_1Structures_1_1IMAGE__FILE__HEADER.html#ab773d18e25b5befc7a4a4ffa9c6433ee',1,'SharpHellsGate::Win32::Structures::IMAGE_FILE_HEADER']]],
+  ['numberofsymbols_358',['NumberOfSymbols',['../de/dcb/structSharpHellsGate_1_1Win32_1_1Structures_1_1IMAGE__FILE__HEADER.html#a7959eee3887634d7d63c85742173fa52',1,'SharpHellsGate::Win32::Structures::IMAGE_FILE_HEADER']]]
+];
